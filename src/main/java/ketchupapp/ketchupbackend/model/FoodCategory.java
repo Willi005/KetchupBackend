@@ -1,6 +1,6 @@
 package ketchupapp.ketchupbackend.model;
 
-public enum ProductCategory {
+public enum FoodCategory {
     BURGER,
     HOTDOG,
     FRIE,

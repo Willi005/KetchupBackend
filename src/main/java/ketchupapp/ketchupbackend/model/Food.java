@@ -1,4 +1,5 @@
 package ketchupapp.ketchupbackend.model;
+
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -8,15 +9,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-
-@Document(collection = "products")
-public class Product {
+@Document(collection = "food")
+public class Food {
     @Id
     private String id;
 
     private String name;
     private double price;
-    private String category;
+    private FoodCategory category;
     private int stock;
     private String image;
 
