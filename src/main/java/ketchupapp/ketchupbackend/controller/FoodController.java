@@ -47,7 +47,7 @@ public class FoodController {
     // GET /food/category/{categoryName}
     @GetMapping("/category/{categoryName}")
     public ResponseEntity<List<FoodResponseDto>> getFoodByCategory(@PathVariable String categoryName) {
-        // Convertimos el String a Enum de forma segura
+        // Convertimos el String a Enum de forma segura ya que Mongo lo trata como String
         FoodCategory category = FoodCategory.valueOf(categoryName.toUpperCase());
         List<FoodResponseDto> foods = foodService.getFoodByCategory(category);
         return ResponseEntity.ok(foods);
