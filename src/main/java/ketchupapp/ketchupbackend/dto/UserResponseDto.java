@@ -5,14 +5,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter
-@Setter
-@AllArgsConstructor
-public class UserResponseDto {
-    private String id;
-    private String username;
-    private String name;
-    private String secondName;
-    private String rut;
-    private UserRol rol;
+public record UserResponseDto(String id,
+                              String username,
+                              String name,
+                              String secondName,
+                              String rut,
+                              UserRol rol) {
+
 }

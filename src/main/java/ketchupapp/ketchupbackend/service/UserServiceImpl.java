@@ -56,7 +56,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto getUserById(long id) {
+    public UserResponseDto getUserById(String id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + id));
         return mapToResponseDto(user);
@@ -64,7 +64,7 @@ public class UserServiceImpl implements UserService {
 
     // UPDATE
     @Override
-    public UserResponseDto updateUser(long id, UserRequestDto dto) {
+    public UserResponseDto updateUser(String id, UserRequestDto dto) {
         User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + id));
 
@@ -81,7 +81,7 @@ public class UserServiceImpl implements UserService {
 
     // DELETE
     @Override
-    public void deleteUser(long id) {
+    public void deleteUser(String id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("Usuario no encontrado con id: " + id);
         }

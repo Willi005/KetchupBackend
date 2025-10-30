@@ -14,9 +14,9 @@ public interface UserService {
 
     // CRUD
     List<UserResponseDto> getAllUsers();
-    UserResponseDto getUserById(long id);
-    UserResponseDto updateUser(long id, UserRequestDto userRequestDto);
-    void deleteUser(long id);
+    UserResponseDto getUserById(String id);
+    UserResponseDto updateUser(String id, UserRequestDto userRequestDto);
+    void deleteUser(String id);
 
     // Buscar por rol
     List<UserResponseDto> getUsersByRol(UserRol rol);

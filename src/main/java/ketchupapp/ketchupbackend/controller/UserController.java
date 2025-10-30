@@ -60,21 +60,21 @@
 
      // ACTUALIZAR
      @PutMapping("/{id}")
-     public ResponseEntity<UserResponseDto> updateUser(@PathVariable long id, @Valid @RequestBody UserRequestDto userRequest) {
+     public ResponseEntity<UserResponseDto> updateUser(@PathVariable String id, @Valid @RequestBody UserRequestDto userRequest) {
          UserResponseDto updatedUser = userService.updateUser(id, userRequest);
          return ResponseEntity.ok(updatedUser);
      }
 
      // ELIMINAR
      @DeleteMapping("/{id}")
-     public ResponseEntity<Void> deleteUser(@PathVariable long id) {
+     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
          userService.deleteUser(id);
          return ResponseEntity.noContent().build();
      }
 
      // LISTAR POR ID
      @GetMapping("/{id}")
-     public ResponseEntity<UserResponseDto> getUserById(@PathVariable long id) {
+     public ResponseEntity<UserResponseDto> getUserById(@PathVariable String id) {
          UserResponseDto user = userService.getUserById(id);
          return ResponseEntity.ok(user);
      }
