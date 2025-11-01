@@ -23,9 +23,11 @@
  @CrossOrigin(origins="http://localhost:5173")
  public class UserController {
 
-     @Autowired
-     @Qualifier("userService")
-     private UserService userService;
+     private final UserService userService;
+
+     public UserController(@Qualifier("userService") UserService userService) {
+         this.userService = userService;
+     }
 
      // LOGIN cambiar
      @PostMapping("/login")
@@ -41,14 +43,12 @@
          return new ResponseEntity<>(newUser, HttpStatus.CREATED);
      }
 
-     // LISTAR TODOS
+     // LISTAR USUARIOS
      @GetMapping
      public ResponseEntity<List<UserResponseDto>> getAllUsers() {
          List<UserResponseDto> users = userService.getAllUsers();
          return ResponseEntity.ok(users);
      }
-
-
 
      // LISTAR POR ROL
      @GetMapping("/rol/{rol}")

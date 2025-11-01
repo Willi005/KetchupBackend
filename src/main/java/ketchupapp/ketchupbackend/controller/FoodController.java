@@ -19,9 +19,11 @@ import java.util.List;
 @CrossOrigin(origins="http://localhost:5173")
 public class FoodController {
 
-    @Autowired
-    @Qualifier("foodService")
-    private FoodService foodService;
+    private final FoodService foodService;
+
+    public FoodController(@Qualifier("foodService") FoodService foodService) {
+        this.foodService = foodService;
+    }
 
     // POST /food
     @PostMapping

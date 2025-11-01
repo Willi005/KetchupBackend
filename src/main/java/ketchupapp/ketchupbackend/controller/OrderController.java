@@ -17,9 +17,11 @@ import java.util.List;
 @CrossOrigin(origins="http://localhost:5173")
 public class OrderController {
 
-    @Autowired
-    @Qualifier("orderService")
-    private OrderService orderService;
+    private final OrderService orderService;
+
+    public OrderController(@Qualifier("orderService") OrderService orderService) {
+        this.orderService = orderService;
+    }
 
     // POST /orders
     @PostMapping
@@ -36,7 +38,7 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    // GET /orders/{id}
+    // GET {id}
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDto> getOrderById(@PathVariable String id) {
         OrderResponseDto order = orderService.getOrderById(id);
