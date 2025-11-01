@@ -10,12 +10,15 @@ import lombok.Setter;
 public class UserRequestDto {
     @NotBlank
     private String username;
+
     @NotBlank
     private String name;
     private String secondName;
+
     @NotBlank
     private String rut;
     private UserRol rol;
+
     @NotBlank
     private String password;
 }

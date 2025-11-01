@@ -19,6 +19,4 @@ public class Food {
     private FoodCategory category;
     private int stock;
     private String image;
-
-
 }

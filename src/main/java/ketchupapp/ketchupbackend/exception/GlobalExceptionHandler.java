@@ -18,6 +18,22 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    // NUEVO: Excepciónes para la orden
+    //Insuficiencia de stock
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<?> insufficientStockException(InsufficientStockException ex, WebRequest request) {
+        // Devuelve el mensaje (ej: "Stock insuficiente para: comida") y un 400
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+    //Insuficiencia de dinero
+    @ExceptionHandler(InsufficientPaymentException.class)
+    public ResponseEntity<?> insufficientPaymentException(InsufficientPaymentException ex, WebRequest request) {
+        // Devuelve el mensaje (ej: "Monto de pago insuficiente") y un 400
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+    // Excepciones para la orden
+
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
