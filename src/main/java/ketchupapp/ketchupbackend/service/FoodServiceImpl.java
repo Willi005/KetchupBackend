@@ -36,7 +36,7 @@ public class FoodServiceImpl implements FoodService {
         return foodRepository.findAll()
                 .stream()
                 .map(this::mapToResponseDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
