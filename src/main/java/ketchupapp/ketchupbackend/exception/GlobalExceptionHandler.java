@@ -14,20 +14,20 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<?> resourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
+    public ResponseEntity<String> resourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
     // NUEVO: Excepciónes para la orden
     //Insuficiencia de stock
     @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<?> insufficientStockException(InsufficientStockException ex, WebRequest request) {
+    public ResponseEntity<String> insufficientStockException(InsufficientStockException ex, WebRequest request) {
         // Devuelve el mensaje (ej: "Stock insuficiente para: comida") y un 400
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.CONFLICT);
     }
     //Insuficiencia de dinero
     @ExceptionHandler(InsufficientPaymentException.class)
-    public ResponseEntity<?> insufficientPaymentException(InsufficientPaymentException ex, WebRequest request) {
+    public ResponseEntity<String> insufficientPaymentException(InsufficientPaymentException ex, WebRequest request) {
         // Devuelve el mensaje (ej: "Monto de pago insuficiente") y un 400
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
 
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.put(error.getField(), error.getDefaultMessage()));
@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> globalExceptionHandler(Exception ex, WebRequest request) {
+    public ResponseEntity<String> globalExceptionHandler(Exception ex, WebRequest request) {
         return new ResponseEntity<>("Error interno del servidor: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

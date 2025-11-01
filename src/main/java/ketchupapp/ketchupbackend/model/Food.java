@@ -1,12 +1,13 @@
 package ketchupapp.ketchupbackend.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 //lombok genera automáticamente getters y setters y constructores, es dependencia :)
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "foods")
