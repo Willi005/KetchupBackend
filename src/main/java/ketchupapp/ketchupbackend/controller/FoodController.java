@@ -6,7 +6,6 @@ import ketchupapp.ketchupbackend.dto.FoodResponseDto;
 import ketchupapp.ketchupbackend.model.FoodCategory;
 import ketchupapp.ketchupbackend.service.FoodService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
