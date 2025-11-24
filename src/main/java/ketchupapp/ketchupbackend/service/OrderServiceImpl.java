@@ -1,13 +1,12 @@
 package ketchupapp.ketchupbackend.service;
 
-import ketchupapp.ketchupbackend.dto.OrderItemRequestDto;
 import ketchupapp.ketchupbackend.dto.OrderRequestDto;
 import ketchupapp.ketchupbackend.dto.OrderResponseDto;
-import ketchupapp.ketchupbackend.exception.InsufficientPaymentException;
-import ketchupapp.ketchupbackend.exception.InsufficientStockException;
 import ketchupapp.ketchupbackend.exception.ResourceNotFoundException;
-import ketchupapp.ketchupbackend.model.*;
-import ketchupapp.ketchupbackend.repo.FoodRepository;
+import ketchupapp.ketchupbackend.model.Order;
+import ketchupapp.ketchupbackend.model.OrderItem;
+import ketchupapp.ketchupbackend.model.PaymentDetails;
+import ketchupapp.ketchupbackend.model.User;
 import ketchupapp.ketchupbackend.repo.OrderRepository;
 import ketchupapp.ketchupbackend.repo.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,41 +14,46 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service("orderService")
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final FoodRepository foodRepository;
     private final UserRepository userRepository;
+    // Nuevas dependencias
+    private final InventoryService inventoryService;
+    private final PaymentService paymentService;
 
     @Autowired
-    public OrderServiceImpl(OrderRepository orderRepository, FoodRepository foodRepository, UserRepository userRepository) {
+    public OrderServiceImpl(OrderRepository orderRepository,
+                            UserRepository userRepository,
+                            InventoryService inventoryService,
+                            PaymentService paymentService) {
         this.orderRepository = orderRepository;
-        this.foodRepository = foodRepository;
         this.userRepository = userRepository;
+        this.inventoryService = inventoryService;
+        this.paymentService = paymentService;
     }
 
     @Override
-    @Transactional  // Esta etiqueta sirve para revertir tod/o en caso de que algo falle.
+    @Transactional
     public OrderResponseDto createOrder(OrderRequestDto dto) {
-        // 1. Obtención de empleado
+        // 1. Obtenemos el cajero
         User employee = userRepository.findById(dto.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Empleado no encontrado con id: " + dto.getEmployeeId()));
 
-        // 2. Procesar Items (Inventario) - Refactorizado
-        List<OrderItem> orderItems = processOrderItems(dto.getItems());
+        // 2. Delegamos la gestión de items a InventoryService
+        List<OrderItem> orderItems = inventoryService.processOrderItems(dto.getItems());
 
-        // 3. Calcular Totales - Refactorizado
+        // 3. Calculamos el subtotal
         double subtotal = calculateSubtotal(orderItems);
-        double totalAmount = subtotal; // Aquí podrías sumar impuestos si fuera necesario
+        double totalAmount = subtotal;
 
-        // 4. Procesar Pago - Refactorizado
-        PaymentDetails paymentDetails = processPayment(dto.getPayment(), totalAmount);
+        // 4. Delegamos la gestión de pagos a PaymentService
+        PaymentDetails paymentDetails = paymentService.processPayment(dto.getPayment(), totalAmount);
 
-        // 5. Generación de ticket y guardado
+        // 5. Generamos el ticket y guardamos
         long ticketNumber = orderRepository.count() + 1;
 
         Order order = new Order();
@@ -69,6 +73,12 @@ public class OrderServiceImpl implements OrderService {
         return mapToResponseDto(savedOrder);
     }
 
+    private double calculateSubtotal(List<OrderItem> orderItems) {
+        return orderItems.stream()
+                .mapToDouble(item -> item.getPriceAtPurchase() * item.getQuantity())
+                .sum();
+    }
+
     @Override
     public OrderResponseDto getOrderById(String id) {
         Order order = orderRepository.findById(id)
@@ -83,7 +93,6 @@ public class OrderServiceImpl implements OrderService {
                 .toList();
     }
 
-    // MAPPER
     private OrderResponseDto mapToResponseDto(Order order) {
         return new OrderResponseDto(
                 order.getId(),
@@ -96,63 +105,6 @@ public class OrderServiceImpl implements OrderService {
                 order.getSubtotal(),
                 order.getTotalAmount(),
                 order.getKitchenNotes()
-        );
-    }
-    // TÉCNICA DE REFACTORING: EXTRACT METHOD
-    // Propósito: Aislar la lógica de validación y actualización de stock.
-    private List<OrderItem> processOrderItems(List<OrderItemRequestDto> itemsDto) {
-        List<OrderItem> orderItems = new ArrayList<>();
-
-        for (OrderItemRequestDto itemDto : itemsDto) {
-            Food food = foodRepository.findById(itemDto.getFoodId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Comida no encontrada con id: " + itemDto.getFoodId()));
-
-            // Validación de Stock
-            if (food.getStock() < itemDto.getQuantity()) {
-                throw new InsufficientStockException("Stock insuficiente para: " + food.getName());
-            }
-
-            // Actualización de Stock
-            food.setStock(food.getStock() - itemDto.getQuantity());
-            foodRepository.save(food);
-
-            // Creación del Item de Orden
-            OrderItem orderItem = new OrderItem(
-                    food.getId(),
-                    food.getName(),
-                    food.getPrice(),
-                    itemDto.getQuantity()
-            );
-            orderItems.add(orderItem);
-        }
-        return orderItems;
-    }
-    // TÉCNICA DE REFACTORING: EXTRACT METHOD
-    // Propósito: Separar el cálculo financiero de la lógica de inventario.
-    private double calculateSubtotal(List<OrderItem> orderItems) {
-        return orderItems.stream()
-                .mapToDouble(item -> item.getPriceAtPurchase() * item.getQuantity())
-                .sum();
-    }
-    // TÉCNICA DE REFACTORING: EXTRACT METHOD
-    // Propósito: Encapsular la lógica de validación de pago y cálculo de vuelto.
-    private PaymentDetails processPayment(ketchupapp.ketchupbackend.dto.PaymentDetailsRequestDto paymentDto, double totalAmount) {
-        if (paymentDto.getAmountPaid() < totalAmount) {
-            throw new InsufficientPaymentException(
-                    String.format("Monto de pago insuficiente. Total de la orden: %.2f, Monto pagado: %.2f",
-                            totalAmount, paymentDto.getAmountPaid())
-            );
-        }
-
-        double changeGiven = 0;
-        if (paymentDto.getType() == PaymentType.CASH) {
-            changeGiven = paymentDto.getAmountPaid() - totalAmount;
-        }
-
-        return new PaymentDetails(
-                paymentDto.getType(),
-                paymentDto.getAmountPaid(),
-                changeGiven
         );
     }
 }

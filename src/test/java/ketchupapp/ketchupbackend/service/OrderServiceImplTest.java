@@ -1,14 +1,10 @@
 package ketchupapp.ketchupbackend.service;
 
-import ketchupapp.ketchupbackend.dto.OrderItemRequestDto;
-import ketchupapp.ketchupbackend.dto.OrderRequestDto;
-import ketchupapp.ketchupbackend.dto.OrderResponseDto;
-import ketchupapp.ketchupbackend.dto.PaymentDetailsRequestDto;
+import ketchupapp.ketchupbackend.dto.*;
 import ketchupapp.ketchupbackend.exception.InsufficientPaymentException;
 import ketchupapp.ketchupbackend.exception.InsufficientStockException;
 import ketchupapp.ketchupbackend.exception.ResourceNotFoundException;
 import ketchupapp.ketchupbackend.model.*;
-import ketchupapp.ketchupbackend.repo.FoodRepository;
 import ketchupapp.ketchupbackend.repo.OrderRepository;
 import ketchupapp.ketchupbackend.repo.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,12 +15,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,19 +27,20 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderRepository orderRepository;
-
-    @Mock
-    private FoodRepository foodRepository;
-
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private InventoryService inventoryService; // Nuevo mock por el refactoring
+    @Mock
+    private PaymentService paymentService;     // Nuevo mock por el refactoring
 
     @InjectMocks
     private OrderServiceImpl orderService;
 
     private User employee;
-    private Food foodItem;
     private OrderRequestDto orderRequest;
+    private List<OrderItem> mockOrderItems;
+    private PaymentDetails mockPaymentDetails;
 
     @BeforeEach
     void setUp() {
@@ -52,19 +48,12 @@ class OrderServiceImplTest {
         employee = new User();
         employee.setId("emp-1");
         employee.setName("Juan");
-        employee.setUsername("juanperez");
-
-        foodItem = new Food();
-        foodItem.setId("food-1");
-        foodItem.setName("Hamburguesa");
-        foodItem.setPrice(5000.0);
-        foodItem.setStock(10);
-        foodItem.setCategory(FoodCategory.BURGER);
 
         // Construcción básica del DTO de request
         orderRequest = new OrderRequestDto();
         orderRequest.setEmployeeId("emp-1");
         orderRequest.setClientName("Cliente Test");
+
 
         OrderItemRequestDto itemDto = new OrderItemRequestDto();
         itemDto.setFoodId("food-1");
@@ -73,23 +62,31 @@ class OrderServiceImplTest {
 
         PaymentDetailsRequestDto paymentDto = new PaymentDetailsRequestDto();
         paymentDto.setType(PaymentType.CASH);
-        paymentDto.setAmountPaid(10000.0); // Exacto: 5000 * 2
+        paymentDto.setAmountPaid(10000.0);
         orderRequest.setPayment(paymentDto);
+
+        // 3. Cofiguración de respuesta de los mocks
+        // Simulamos que InventoryService devuelve una hamburguesa de 5,000 x 2 = 10,000 total
+        mockOrderItems = List.of(
+                new OrderItem("food-1", "Hamburguesa", 5000.0, 2)
+        );
+
+        // Simulamos que PaymentService devuelve un pago exacto
+        mockPaymentDetails = new PaymentDetails(PaymentType.CASH, 10000.0, 0.0);
     }
 
     @Test
-    @DisplayName("Debe crear orden exitosamente y descontar stock")
+    @DisplayName("Debe crear orden exitosamente coordinando servicios")
     void createOrder_Success() {
         // GIVEN
         when(userRepository.findById("emp-1")).thenReturn(Optional.of(employee));
-        when(foodRepository.findById("food-1")).thenReturn(Optional.of(foodItem));
-        when(orderRepository.count()).thenReturn(100L); // Simulamos que hay 100 órdenes previas
-
-        // Simulamos que al guardar retorna una orden con ID
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
-            Order savedOrder = invocation.getArgument(0);
-            savedOrder.setId("order-new-1");
-            return savedOrder;
+        when(inventoryService.processOrderItems(any())).thenReturn(mockOrderItems);
+        when(paymentService.processPayment(any(), eq(10000.0))).thenReturn(mockPaymentDetails);
+        when(orderRepository.count()).thenReturn(100L);
+        when(orderRepository.save(any(Order.class))).thenAnswer(i -> {
+            Order o = i.getArgument(0);
+            o.setId("new-id");
+            return o;
         });
 
         // WHEN
@@ -97,13 +94,10 @@ class OrderServiceImplTest {
 
         // THEN
         assertNotNull(response);
-        assertEquals(101L, response.ticketNumber()); // 100 + 1
+        assertEquals(101L, response.ticketNumber());
         assertEquals(10000.0, response.totalAmount());
-        assertEquals("Cliente Test", response.clientName());
-
-        // Verificar que se actualizó el stock: Tenía 10, compro 2 -> Quedan 8
-        assertEquals(8, foodItem.getStock());
-        verify(foodRepository).save(foodItem); // Verifica que se guardó la comida actualizada
+        verify(inventoryService).processOrderItems(any());
+        verify(paymentService).processPayment(any(), eq(10000.0));
         verify(orderRepository).save(any(Order.class));
     }
 
@@ -114,69 +108,70 @@ class OrderServiceImplTest {
         when(userRepository.findById("emp-1")).thenReturn(Optional.empty());
 
         // WHEN & THEN
-        assertThrows(ResourceNotFoundException.class, () -> {
-            orderService.createOrder(orderRequest);
-        });
+        assertThrows(ResourceNotFoundException.class, () -> orderService.createOrder(orderRequest));
 
-        // Asegurar que no se tocó el repositorio de órdenes ni comida
-        verify(foodRepository, never()).save(any());
+        verifyNoInteractions(inventoryService);
+        verifyNoInteractions(paymentService);
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Debe fallar si no hay stock suficiente")
+    @DisplayName("Debe fallar si InventoryService lanza excepción de stock")
     void createOrder_InsufficientStock_ThrowsException() {
         // GIVEN
         when(userRepository.findById("emp-1")).thenReturn(Optional.of(employee));
-        when(foodRepository.findById("food-1")).thenReturn(Optional.of(foodItem));
-
-        // Modificamos el request para pedir más de lo que hay (actualmente el stock = 10)
-        orderRequest.getItems().get(0).setQuantity(15);
-
-        // WHEN & THEN
-        InsufficientStockException exception = assertThrows(InsufficientStockException.class, () -> {
-            orderService.createOrder(orderRequest);
-        });
-
-        assertTrue(exception.getMessage().contains("Stock insuficiente"));
-        verify(orderRepository, never()).save(any()); // No se debe crear orden
-    }
-
-    @Test
-    @DisplayName("Debe fallar si el pago es insuficiente")
-    void createOrder_InsufficientPayment_ThrowsException() {
-        // GIVEN
-        when(userRepository.findById("emp-1")).thenReturn(Optional.of(employee));
-        when(foodRepository.findById("food-1")).thenReturn(Optional.of(foodItem));
-
-        // Costo total es 10,000 (5000 * 2), pagamos solo 5000
-        orderRequest.getPayment().setAmountPaid(5000.0);
+        // Simulamos que el servicio de inventario falla
+        when(inventoryService.processOrderItems(any()))
+                .thenThrow(new InsufficientStockException("Stock insuficiente"));
 
         // WHEN & THEN
-        InsufficientPaymentException exception = assertThrows(InsufficientPaymentException.class, () -> {
-            orderService.createOrder(orderRequest);
-        });
+        assertThrows(InsufficientStockException.class, () -> orderService.createOrder(orderRequest));
 
-        assertTrue(exception.getMessage().contains("Monto de pago insuficiente"));
-        verify(foodRepository).save(foodItem);
+        verifyNoInteractions(paymentService); // No debe intentar cobrar
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Debe calcular el vuelto correctamente (CASH)")
+    @DisplayName("Debe fallar si PaymentService lanza excepción de pago")
+    void createOrder_InsufficientPayment_ThrowsException() {
+        // GIVEN
+        when(userRepository.findById("emp-1")).thenReturn(Optional.of(employee));
+        when(inventoryService.processOrderItems(any())).thenReturn(mockOrderItems);
+
+        // Simulamos que el servicio de pago falla (por Ej: Pagó 5,000 pero costaba 10,000)
+        when(paymentService.processPayment(any(), eq(10000.0)))
+                .thenThrow(new InsufficientPaymentException("Dinero insuficiente"));
+
+        // WHEN & THEN
+        assertThrows(InsufficientPaymentException.class, () -> orderService.createOrder(orderRequest));
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe mapear correctamente el vuelto calculado por PaymentService")
     void createOrder_CalculateChange_Success() {
         // GIVEN
         when(userRepository.findById("emp-1")).thenReturn(Optional.of(employee));
-        when(foodRepository.findById("food-1")).thenReturn(Optional.of(foodItem));
-        when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+        when(inventoryService.processOrderItems(any())).thenReturn(mockOrderItems); // Total de 10,000
 
-        // Costo: 10,000. Pago: 12,000
+        // Configuración específica para este test:
+        // El cliente paga 12,000
         orderRequest.getPayment().setAmountPaid(12000.0);
+
+        // El servicio de pago debería devolver un objeto con 2,000 de vuelto.
+        // Aquí se verifica que OrderService toma ese objeto y lo pone en la respuesta final.
+        PaymentDetails paymentWithChange = new PaymentDetails(PaymentType.CASH, 12000.0, 2000.0);
+
+        when(paymentService.processPayment(any(), eq(10000.0))).thenReturn(paymentWithChange);
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
 
         // WHEN
         OrderResponseDto response = orderService.createOrder(orderRequest);
 
         // THEN
         assertEquals(2000.0, response.payment().getChangeGiven());
+        assertEquals(12000.0, response.payment().getAmountPaid());
     }
 }
