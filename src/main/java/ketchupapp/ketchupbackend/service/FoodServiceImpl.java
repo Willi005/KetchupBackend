@@ -29,7 +29,6 @@ public class FoodServiceImpl implements FoodService {
         Food savedFood = foodRepository.save(food);
         return mapToResponseDto(savedFood);
     }
-
     //READ
     @Override
     public List<FoodResponseDto> getAllFood() {

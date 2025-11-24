@@ -9,5 +9,4 @@ public class KetchupBackendApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(KetchupBackendApplication.class, args);
 	}
-
 }
