@@ -38,10 +38,9 @@ public class UserDetailsServiceImplent implements UserDetailsService {
         this.userService = userService;
     }
 
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return repository.findByUsernameReturnUser(username)
+        return repository.findFirstByUsername(username)
                 .map(CustomUserDetails::new)
                 .orElseThrow(() -> new UsernameNotFoundException("The user has not been found"));
     }
@@ -56,7 +55,7 @@ public class UserDetailsServiceImplent implements UserDetailsService {
         String password = authLoginRequest.password();
         String accessToken;
 
-        Optional<User> userOptional = repository.findByUsernameReturnUser(username);
+        Optional<User> userOptional = repository.findFirstByUsername(username);
 
         if (userOptional.isPresent()) {
             Authentication authentication = this.authenticate(username, password);

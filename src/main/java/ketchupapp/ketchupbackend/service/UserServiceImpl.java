@@ -26,8 +26,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto registerUser(UserRequestDto userRequestDto) {
-        // CAMBIO AQUÍ: Usamos findFirstByUsername para verificar existencia
-        if (userRepository.findByUsernameReturnUser(userRequestDto.getUsername()).isPresent()) {
+        if (userRepository.findFirstByUsername(userRequestDto.getUsername()).isPresent()) {
             throw new IllegalArgumentException("El nombre de usuario ya existe");
         }
 
@@ -39,8 +38,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto login(UserLoginDto loginDto) {
-        // CAMBIO AQUÍ: Usamos findFirstByUsername para obtener el usuario único
-        User user = userRepository.findByUsernameReturnUser(loginDto.getUsername())
+        User user = userRepository.findFirstByUsername(loginDto.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         if (!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {

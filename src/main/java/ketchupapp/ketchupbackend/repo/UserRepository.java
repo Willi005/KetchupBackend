@@ -14,6 +14,6 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     // este metodo retorna usuario se usa para las clases de scurity ya que el findbyusername devuelve una lista de usuario cuando deberia devolver usuario
     //pero preferi hacer otro metodo para no interferir en todo el proyecto ya que estos tienen su uso.
-    Optional<User> findByUsernameReturnUser(String username);
+    Optional<User> findFirstByUsername(String username);
 }
 //usar username en base datos y ver que ondas postman pq busca por el nombre y no por el username probrar endpoint
