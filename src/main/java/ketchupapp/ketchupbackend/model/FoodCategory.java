@@ -5,5 +5,6 @@ public enum FoodCategory {
     HOTDOG,
     FRIE,
     PIZZA,
-    DRINK
+    DRINK,
+    DESSERT
 }
