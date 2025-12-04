@@ -26,7 +26,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (users.isEmpty()) {
             throw new UsernameNotFoundException("Usuario no encontrado: " + username);
         }
-        // Asumimos que el username es único, tomamos el primero
         User user = users.get(0);
 
         return new org.springframework.security.core.userdetails.User(

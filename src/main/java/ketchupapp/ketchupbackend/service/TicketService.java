@@ -19,16 +19,12 @@ public class TicketService {
     // Margen reducido para maximizar espacio
     private static final Rectangle PAGE_SIZE = new Rectangle(226, 1200);
 
-    // Fuentes estéticas
-    private static final Font HEADER_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, Color.BLACK);
-    private static final Font SUBHEADER_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.BLACK);
+    // Fuentes estéticas (Mismas que el ticket cliente)
+    private static final Font HEADER_FONT = FontFactory.getFont(FontFactory.COURIER_BOLD, 14, Color.BLACK);
+    private static final Font SUBHEADER_FONT = FontFactory.getFont(FontFactory.COURIER_BOLD, 10, Color.BLACK);
     private static final Font DATA_FONT = FontFactory.getFont(FontFactory.COURIER, 8, Color.BLACK);
     private static final Font DATA_BOLD_FONT = FontFactory.getFont(FontFactory.COURIER_BOLD, 8, Color.BLACK);
-    private static final Font FOOTER_FONT = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, Color.DARK_GRAY);
-
-    // Fuentes Cocina (Grandes y claras)
-    private static final Font KITCHEN_HEADER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.BLACK);
-    private static final Font KITCHEN_ITEM = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.BLACK);
+    private static final Font FOOTER_FONT = FontFactory.getFont(FontFactory.COURIER_OBLIQUE, 8, Color.DARK_GRAY);
 
     public byte[] generateTicket(Order order) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -45,8 +41,8 @@ public class TicketService {
             PdfPTable headerTable = new PdfPTable(1);
             headerTable.setWidthPercentage(100);
 
-            addCenterCell(headerTable, "KETCHUP POS", HEADER_FONT);
-            addCenterCell(headerTable, "Av. Siempre Viva 123", DATA_FONT);
+            addCenterCell(headerTable, "KETCHUP", HEADER_FONT);
+            addCenterCell(headerTable, "Av. Alemania 321", DATA_FONT);
             addCenterCell(headerTable, "Tel: +56 9 1234 5678", DATA_FONT);
             addCenterCell(headerTable, "--------------------------------", DATA_FONT);
             document.add(headerTable);
@@ -69,7 +65,7 @@ public class TicketService {
             infoTable.addCell(cashierCell);
 
             document.add(infoTable);
-            document.add(new Paragraph("----------------------------------------------------------------", DATA_FONT));
+            document.add(new Paragraph("--------------------------------------------", DATA_FONT));
 
             // 3. Items (Tabla perfecta: Cant | Desc | Total)
             PdfPTable itemTable = new PdfPTable(3);
@@ -79,7 +75,7 @@ public class TicketService {
             // Encabezados tabla
             addLeftCell(itemTable, "CANT", DATA_BOLD_FONT);
             addLeftCell(itemTable, "PRODUCTO", DATA_BOLD_FONT);
-            addRightCell(itemTable, "TOTAL", DATA_BOLD_FONT);
+            addRightCell(itemTable, "TOTAL X PRODUCTO", DATA_BOLD_FONT);
 
             for (OrderItem item : order.getItems()) {
                 addLeftCell(itemTable, String.valueOf(item.getQuantity()), DATA_FONT);
@@ -88,7 +84,7 @@ public class TicketService {
             }
             document.add(itemTable);
 
-            document.add(new Paragraph("----------------------------------------------------------------", DATA_FONT));
+            document.add(new Paragraph("--------------------------------------------", DATA_FONT));
 
             // 4. Totales
             PdfPTable totalsTable = new PdfPTable(2);
@@ -124,53 +120,75 @@ public class TicketService {
             PdfPTable footerTable = new PdfPTable(1);
             footerTable.setWidthPercentage(100);
             addCenterCell(footerTable, "¡GRACIAS POR SU COMPRA!", FOOTER_FONT);
-            addCenterCell(footerTable, "Guarde su ticket para cambio", FOOTER_FONT);
+            addCenterCell(footerTable, "Guarde su ticket para retiro", FOOTER_FONT);
             document.add(footerTable);
 
             // ==========================================
             // CORTE Y ESPACIO
             // ==========================================
-            document.add(new Paragraph("\n\n- - - - - - - - - CORTE - - - - - - - - -\n\n", DATA_FONT));
+            document.add(new Paragraph("\n\n\n- - - - - - - - - - - - - - - - - - - - - -\n\n\n", DATA_FONT));
 
             // ==========================================
-            // TICKET COCINA (Minimalista y Grande)
+            // TICKET COCINA (Estilo Cliente)
             // ==========================================
+
+            // 1. Cabecera (Igual que cliente pero con título de Cocina)
             PdfPTable kitchenHeader = new PdfPTable(1);
             kitchenHeader.setWidthPercentage(100);
 
-            // Invertir colores visualmente (simulado con negrita fuerte)
-            addCenterCell(kitchenHeader, "*** COCINA ***", KITCHEN_HEADER);
-            addCenterCell(kitchenHeader, "ORDEN #" + order.getTicketNumber(), KITCHEN_HEADER);
-            addLeftCell(kitchenHeader, "Hora: " + order.getOrderTimestamp().format(DateTimeFormatter.ofPattern("HH:mm")), SUBHEADER_FONT);
-
-            if (order.getKitchenNotes() != null && !order.getKitchenNotes().isEmpty()) {
-                addLeftCell(kitchenHeader, "NOTA: " + order.getKitchenNotes(), SUBHEADER_FONT);
-            }
+            addCenterCell(kitchenHeader, "COMANDA", HEADER_FONT);
+            addCenterCell(kitchenHeader, "ORDEN #" + order.getTicketNumber()+ "\n\n", SUBHEADER_FONT);
             document.add(kitchenHeader);
 
-            document.add(new Paragraph("--------------------------------", DATA_FONT));
+            // 2. Info Cocina (Hora y Mesero con fuente Courier)
+            PdfPTable kitchenInfoTable = new PdfPTable(2);
+            kitchenInfoTable.setWidthPercentage(100);
 
-            // Lista Items Cocina
+            addLeftCell(kitchenInfoTable, "HORA: " + order.getOrderTimestamp().format(DateTimeFormatter.ofPattern("HH:mm")), DATA_FONT);
+
+            if (order.getEmployeeName() != null) {
+                addRightCell(kitchenInfoTable, "CAJERO: " + order.getEmployeeName(), DATA_FONT);
+            } else {
+                addRightCell(kitchenInfoTable, "", DATA_FONT);
+            }
+            document.add(kitchenInfoTable);
+
+            // Separador
+            document.add(new Paragraph("--------------------------------------------", DATA_FONT));
+
+            // Notas (Si existen) - Usamos negrita courier para destacar
+            if (order.getKitchenNotes() != null && !order.getKitchenNotes().isEmpty()) {
+                PdfPTable notesTable = new PdfPTable(1);
+                notesTable.setWidthPercentage(100);
+                addLeftCell(notesTable, "NOTA: " + order.getKitchenNotes(), DATA_BOLD_FONT);
+                document.add(notesTable);
+                document.add(new Paragraph("--------------------------------------------", DATA_FONT));
+            }
+
+            // 3. Items Cocina (Tabla: Cant | Producto)
+            // Usamos las mismas fuentes y estructura que el ticket cliente
             PdfPTable kitchenItems = new PdfPTable(2);
             kitchenItems.setWidthPercentage(100);
-            kitchenItems.setWidths(new float[]{0.5f, 3f});
+            kitchenItems.setWidths(new float[]{0.7f, 4f}); // Ancho ajustado (sin columna precio)
+
+            // Encabezados tabla
+            addLeftCell(kitchenItems, "CANT", DATA_BOLD_FONT);
+            addLeftCell(kitchenItems, "PRODUCTO", DATA_BOLD_FONT);
 
             for (OrderItem item : order.getItems()) {
-                // Cantidad muy visible
-                PdfPCell qtyCell = new PdfPCell(new Phrase(String.valueOf(item.getQuantity()), KITCHEN_ITEM));
-                qtyCell.setBorder(Rectangle.BOTTOM); // Línea sutil entre items
-                qtyCell.setBorderWidthBottom(0.5f);
-                qtyCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                qtyCell.setPaddingBottom(5);
-                kitchenItems.addCell(qtyCell);
-
-                PdfPCell nameCell = new PdfPCell(new Phrase(item.getName(), KITCHEN_ITEM));
-                nameCell.setBorder(Rectangle.BOTTOM);
-                nameCell.setBorderWidthBottom(0.5f);
-                nameCell.setPaddingBottom(5);
-                kitchenItems.addCell(nameCell);
+                // Usamos DATA_FONT (Courier) para mantener la consistencia visual
+                addLeftCell(kitchenItems, String.valueOf(item.getQuantity()), DATA_FONT);
+                addLeftCell(kitchenItems, item.getName(), DATA_FONT);
             }
             document.add(kitchenItems);
+
+            document.add(new Paragraph("--------------------------------------------", DATA_FONT));
+
+            // Pie de página cocina
+            PdfPTable kitchenFooter = new PdfPTable(1);
+            kitchenFooter.setWidthPercentage(100);
+            addCenterCell(kitchenFooter, "*** FIN ORDEN ***", FOOTER_FONT);
+            document.add(kitchenFooter);
 
             document.add(new Paragraph(".")); // Punto final para asegurar margen de corte
 

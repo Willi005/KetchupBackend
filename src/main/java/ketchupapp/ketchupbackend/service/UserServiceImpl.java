@@ -28,19 +28,18 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // REGISTRO (Actualizado con encriptación)
+    // REGISTRO
     @Override
     public UserResponseDto registerUser(UserRequestDto userRequestDto) {
         User user = mapToEntity(userRequestDto);
-        // ENCRIPTAMOS LA CONTRASEÑA ANTES DE GUARDAR
+        // Encriptamos contraseña antes de guardar
         user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
 
         User savedUser = userRepository.save(user);
         return mapToResponseDto(savedUser);
     }
 
-    // LOGIN (Deprecado, usar AuthController para el flow real con Token)
-    // Se mantiene por compatibilidad si lo necesitas para tests rápidos sin seguridad
+    // LOGIN (Inhabilitado, usar AuthController para el flow real con Token)
     @Override
     public UserResponseDto login(UserLoginDto loginDto) {
         List<User> users = userRepository.findByUsername(loginDto.getUsername());
@@ -83,7 +82,7 @@ public class UserServiceImpl implements UserService {
         existingUser.setRut(dto.getRut());
         existingUser.setRol(dto.getRol());
 
-        // Si viene password nuevo, lo encriptamos
+        // Si viene password nuevo, se encripta
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             existingUser.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
