@@ -8,6 +8,8 @@ import ketchupapp.ketchupbackend.model.User;
 import ketchupapp.ketchupbackend.model.UserRol;
 import ketchupapp.ketchupbackend.repo.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,22 +19,28 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
+    // @Lazy para evitar dependencia circular si SecurityConfig usa UserService
     @Autowired
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, @Lazy PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    // REGISTRO
+    // REGISTRO (Actualizado con encriptación)
     @Override
     public UserResponseDto registerUser(UserRequestDto userRequestDto) {
         User user = mapToEntity(userRequestDto);
-        user.setPassword(userRequestDto.getPassword());
+        // ENCRIPTAMOS LA CONTRASEÑA ANTES DE GUARDAR
+        user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+
         User savedUser = userRepository.save(user);
         return mapToResponseDto(savedUser);
     }
 
-    // LOGIN
+    // LOGIN (Deprecado, usar AuthController para el flow real con Token)
+    // Se mantiene por compatibilidad si lo necesitas para tests rápidos sin seguridad
     @Override
     public UserResponseDto login(UserLoginDto loginDto) {
         List<User> users = userRepository.findByUsername(loginDto.getUsername());
@@ -40,7 +48,8 @@ public class UserServiceImpl implements UserService {
             throw new ResourceNotFoundException("Usuario no encontrado");
         }
         User user = users.get(0);
-        if (loginDto.getPassword() == user.getPassword()) {
+        // Validamos contraseña encriptada
+        if (!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
             throw new IllegalArgumentException("Contraseña incorrecta");
         }
         return mapToResponseDto(user);
@@ -73,7 +82,11 @@ public class UserServiceImpl implements UserService {
         existingUser.setSecondName(dto.getSecondName());
         existingUser.setRut(dto.getRut());
         existingUser.setRol(dto.getRol());
-        existingUser.setPassword(dto.getPassword());
+
+        // Si viene password nuevo, lo encriptamos
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            existingUser.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
 
         User updatedUser = userRepository.save(existingUser);
         return mapToResponseDto(updatedUser);
@@ -116,7 +129,7 @@ public class UserServiceImpl implements UserService {
         user.setSecondName(dto.getSecondName());
         user.setRut(dto.getRut());
         user.setRol(dto.getRol());
-        user.setPassword(dto.getPassword());
+        // El password se setea encriptado en el método register
         return user;
     }
 }
