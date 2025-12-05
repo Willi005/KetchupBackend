@@ -6,6 +6,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import ketchupapp.ketchupbackend.model.Order;
 import ketchupapp.ketchupbackend.model.OrderItem;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -13,13 +14,13 @@ import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 
 @Service
+@Slf4j
 public class TicketService {
 
     // Configuración para 80mm (aprox 226 pts)
-    // Margen reducido para maximizar espacio
     private static final Rectangle PAGE_SIZE = new Rectangle(226, 1200);
 
-    // Fuentes estéticas (Mismas que el ticket cliente)
+    // Fuentes estéticas
     private static final Font HEADER_FONT = FontFactory.getFont(FontFactory.COURIER_BOLD, 14, Color.BLACK);
     private static final Font SUBHEADER_FONT = FontFactory.getFont(FontFactory.COURIER_BOLD, 10, Color.BLACK);
     private static final Font DATA_FONT = FontFactory.getFont(FontFactory.COURIER, 8, Color.BLACK);
@@ -27,11 +28,14 @@ public class TicketService {
     private static final Font FOOTER_FONT = FontFactory.getFont(FontFactory.COURIER_OBLIQUE, 8, Color.DARK_GRAY);
 
     public byte[] generateTicket(Order order) {
+        log.info("TICKET: Iniciando generación de PDF para Orden #{}", order.getTicketNumber());
+
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document document = new Document(PAGE_SIZE, 5, 5, 10, 10); // Márgenes: Izq, Der, Arr, Aba
+            Document document = new Document(PAGE_SIZE, 5, 5, 10, 10);
             PdfWriter.getInstance(document, out);
 
             document.open();
+            log.debug("TICKET: Documento abierto. Escribiendo cabecera...");
 
             // ==========================================
             // TICKET CLIENTE
@@ -51,11 +55,9 @@ public class TicketService {
             PdfPTable infoTable = new PdfPTable(2);
             infoTable.setWidthPercentage(100);
 
-            // Fecha y Ticket alineados
             addLeftCell(infoTable, "FECHA: " + order.getOrderTimestamp().format(DateTimeFormatter.ofPattern("dd/MM/yy HH:mm")), DATA_FONT);
             addRightCell(infoTable, "#" + order.getTicketNumber(), DATA_BOLD_FONT);
 
-            // Cliente y Cajero
             PdfPCell clientCell = new PdfPCell(new Phrase("CTE: " + order.getClientName(), DATA_FONT));
             clientCell.setColspan(2); clientCell.setBorder(Rectangle.NO_BORDER);
             infoTable.addCell(clientCell);
@@ -67,12 +69,12 @@ public class TicketService {
             document.add(infoTable);
             document.add(new Paragraph("--------------------------------------------", DATA_FONT));
 
-            // 3. Items (Tabla perfecta: Cant | Desc | Total)
+            // 3. Items
+            log.debug("TICKET: Agregando {} items a la lista del cliente...", order.getItems().size());
             PdfPTable itemTable = new PdfPTable(3);
             itemTable.setWidthPercentage(100);
-            itemTable.setWidths(new float[]{0.7f, 2.5f, 1.2f}); // Proporciones de columna
+            itemTable.setWidths(new float[]{0.7f, 2.5f, 1.2f});
 
-            // Encabezados tabla
             addLeftCell(itemTable, "CANT", DATA_BOLD_FONT);
             addLeftCell(itemTable, "PRODUCTO", DATA_BOLD_FONT);
             addRightCell(itemTable, "TOTAL X PRODUCTO", DATA_BOLD_FONT);
@@ -89,7 +91,7 @@ public class TicketService {
             // 4. Totales
             PdfPTable totalsTable = new PdfPTable(2);
             totalsTable.setWidthPercentage(100);
-            totalsTable.setWidths(new float[]{2, 1}); // Texto | Monto
+            totalsTable.setWidths(new float[]{2, 1});
 
             addRightTextCell(totalsTable, "SUBTOTAL:", DATA_FONT);
             addRightCell(totalsTable, formatMoney(order.getSubtotal()), DATA_FONT);
@@ -100,7 +102,7 @@ public class TicketService {
             document.add(totalsTable);
 
             // 5. Info Pago
-            document.add(new Paragraph(" ", DATA_FONT)); // Espacio
+            document.add(new Paragraph(" ", DATA_FONT));
             PdfPTable paymentTable = new PdfPTable(2);
             paymentTable.setWidthPercentage(100);
 
@@ -124,26 +126,20 @@ public class TicketService {
             document.add(footerTable);
 
             // ==========================================
-            // CORTE Y ESPACIO
+            // CORTE Y TICKET COCINA
             // ==========================================
             document.add(new Paragraph("\n\n\n- - - - - - - - - - - - - - - - - - - - - -\n\n\n", DATA_FONT));
 
-            // ==========================================
-            // TICKET COCINA (Estilo Cliente)
-            // ==========================================
+            log.debug("TICKET: Generando sección de Comanda (Cocina)...");
 
-            // 1. Cabecera (Igual que cliente pero con título de Cocina)
             PdfPTable kitchenHeader = new PdfPTable(1);
             kitchenHeader.setWidthPercentage(100);
-
             addCenterCell(kitchenHeader, "COMANDA", HEADER_FONT);
             addCenterCell(kitchenHeader, "ORDEN #" + order.getTicketNumber()+ "\n\n", SUBHEADER_FONT);
             document.add(kitchenHeader);
 
-            // 2. Info Cocina (Hora y Mesero con fuente Courier)
             PdfPTable kitchenInfoTable = new PdfPTable(2);
             kitchenInfoTable.setWidthPercentage(100);
-
             addLeftCell(kitchenInfoTable, "HORA: " + order.getOrderTimestamp().format(DateTimeFormatter.ofPattern("HH:mm")), DATA_FONT);
 
             if (order.getEmployeeName() != null) {
@@ -153,11 +149,10 @@ public class TicketService {
             }
             document.add(kitchenInfoTable);
 
-            // Separador
             document.add(new Paragraph("--------------------------------------------", DATA_FONT));
 
-            // Notas (Si existen) - Usamos negrita courier para destacar
             if (order.getKitchenNotes() != null && !order.getKitchenNotes().isEmpty()) {
+                log.debug("TICKET: Agregando notas de cocina: {}", order.getKitchenNotes());
                 PdfPTable notesTable = new PdfPTable(1);
                 notesTable.setWidthPercentage(100);
                 addLeftCell(notesTable, "NOTA: " + order.getKitchenNotes(), DATA_BOLD_FONT);
@@ -165,18 +160,14 @@ public class TicketService {
                 document.add(new Paragraph("--------------------------------------------", DATA_FONT));
             }
 
-            // 3. Items Cocina (Tabla: Cant | Producto)
-            // Usamos las mismas fuentes y estructura que el ticket cliente
             PdfPTable kitchenItems = new PdfPTable(2);
             kitchenItems.setWidthPercentage(100);
-            kitchenItems.setWidths(new float[]{0.7f, 4f}); // Ancho ajustado (sin columna precio)
+            kitchenItems.setWidths(new float[]{0.7f, 4f});
 
-            // Encabezados tabla
             addLeftCell(kitchenItems, "CANT", DATA_BOLD_FONT);
             addLeftCell(kitchenItems, "PRODUCTO", DATA_BOLD_FONT);
 
             for (OrderItem item : order.getItems()) {
-                // Usamos DATA_FONT (Courier) para mantener la consistencia visual
                 addLeftCell(kitchenItems, String.valueOf(item.getQuantity()), DATA_FONT);
                 addLeftCell(kitchenItems, item.getName(), DATA_FONT);
             }
@@ -184,17 +175,22 @@ public class TicketService {
 
             document.add(new Paragraph("--------------------------------------------", DATA_FONT));
 
-            // Pie de página cocina
             PdfPTable kitchenFooter = new PdfPTable(1);
             kitchenFooter.setWidthPercentage(100);
             addCenterCell(kitchenFooter, "*** FIN ORDEN ***", FOOTER_FONT);
             document.add(kitchenFooter);
 
-            document.add(new Paragraph(".")); // Punto final para asegurar margen de corte
+            document.add(new Paragraph("."));
 
             document.close();
-            return out.toByteArray();
+
+            byte[] result = out.toByteArray();
+            log.info("TICKET: PDF generado exitosamente. Tamaño: {} bytes.", result.length);
+
+            return result;
+
         } catch (Exception e) {
+            log.error("ERROR TICKET: Falló la generación del PDF para la orden #{}", order.getTicketNumber(), e);
             throw new RuntimeException("Error generando ticket", e);
         }
     }
@@ -226,7 +222,6 @@ public class TicketService {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
         cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         cell.setBorder(Rectangle.NO_BORDER);
-        // cell.setPaddingRight(10);
         table.addCell(cell);
     }
 
