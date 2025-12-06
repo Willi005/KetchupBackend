@@ -51,7 +51,7 @@ public class TicketService {
             PdfPTable infoTable = new PdfPTable(2);
             infoTable.setWidthPercentage(100);
 
-            // Fecha y Ticket alineados
+            // Fecha y Ticket
             addLeftCell(infoTable, "FECHA: " + order.getOrderTimestamp().format(DateTimeFormatter.ofPattern("dd/MM/yy HH:mm")), DATA_FONT);
             addRightCell(infoTable, "#" + order.getTicketNumber(), DATA_BOLD_FONT);
 
@@ -67,7 +67,7 @@ public class TicketService {
             document.add(infoTable);
             document.add(new Paragraph("--------------------------------------------", DATA_FONT));
 
-            // 3. Items (Tabla perfecta: Cant | Desc | Total)
+            // 3. Items (Tabla: Cant | Desc | Total)
             PdfPTable itemTable = new PdfPTable(3);
             itemTable.setWidthPercentage(100);
             itemTable.setWidths(new float[]{0.7f, 2.5f, 1.2f}); // Proporciones de columna
@@ -129,10 +129,10 @@ public class TicketService {
             document.add(new Paragraph("\n\n\n- - - - - - - - - - - - - - - - - - - - - -\n\n\n", DATA_FONT));
 
             // ==========================================
-            // TICKET COCINA (Estilo Cliente)
+            // TICKET COCINA
             // ==========================================
 
-            // 1. Cabecera (Igual que cliente pero con título de Cocina)
+            // 1. Cabecera con mismo estilo que el cliente
             PdfPTable kitchenHeader = new PdfPTable(1);
             kitchenHeader.setWidthPercentage(100);
 
